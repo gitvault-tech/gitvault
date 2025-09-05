@@ -78,7 +78,7 @@ func runInit(c *cli.Context) error {
 	}
 
 	// Scan for entrypoint, language, dependencies
-	language, entry, guessed, nodeDeps, rustDeps, secretsRuntime := scanProject(projectDir, forcedLang)
+	language, entry, guessed, allDeps, secretsRuntime := scanProject(projectDir, forcedLang)
 
 	// Generate loader file
 	loaderFileName := getLoaderFileName(language)
@@ -87,20 +87,28 @@ func runInit(c *cli.Context) error {
 		return fmt.Errorf("failed to create loader file: %w", err)
 	}
 
-	// Generate phantom.toml
-	tomlContent := generatePhantomToml(projectName, language, entry, guessed, nodeDeps, rustDeps, secretsRuntime)
+	// Generate phantom.toml with comprehensive dependency snapshot
+	tomlContent := generatePhantomToml(projectName, language, entry, guessed, allDeps, secretsRuntime)
 	if err := os.WriteFile(filepath.Join(projectDir, "phantom.toml"), []byte(tomlContent), 0644); err != nil {
 		return fmt.Errorf("failed to create phantom.toml: %w", err)
 	}
-
-	// Optional: minimal language scaffolding
-	if language == "js" || language == "ts" {
-		packageJSON := generatePackageJSON(projectName, description, author, language)
-		_ = os.WriteFile(filepath.Join(projectDir, "package.json"), []byte(packageJSON), 0644)
+	
+	// Generate phantom-lock file for environment setup
+	lockContent := generatePhantomLock(projectName, language, allDeps)
+	if err := os.WriteFile(filepath.Join(projectDir, "phantom-lock"), []byte(lockContent), 0644); err != nil {
+		return fmt.Errorf("failed to create phantom-lock: %w", err)
 	}
-	if language == "python" {
-		requirementsTxt := generateRequirementsTxt()
-		_ = os.WriteFile(filepath.Join(projectDir, "requirements.txt"), []byte(requirementsTxt), 0644)
+
+	// Only generate scaffolding for empty directories
+	if isEmptyDir(projectDir) {
+		if language == "js" || language == "ts" {
+			packageJSON := generatePackageJSON(projectName, description, author, language)
+			_ = os.WriteFile(filepath.Join(projectDir, "package.json"), []byte(packageJSON), 0644)
+		}
+		if language == "python" {
+			requirementsTxt := generateRequirementsTxt()
+			_ = os.WriteFile(filepath.Join(projectDir, "requirements.txt"), []byte(requirementsTxt), 0644)
+		}
 	}
 
 	// Create README.md
@@ -113,7 +121,7 @@ func runInit(c *cli.Context) error {
 
 	fmt.Printf("✅ Project '%s' initialized successfully!\n", projectName)
 	fmt.Printf("📁 Project directory: %s\n", projectDir)
-	fmt.Printf("📝 Generated: %s, phantom.toml\n", loaderFileName)
+	fmt.Printf("📝 Generated: %s, phantom.toml, phantom-lock\n", loaderFileName)
 	fmt.Printf("🚀 Next steps:\n")
 	fmt.Printf("   1. cd %s\n", projectName)
 	if language == "js" || language == "ts" {
@@ -172,7 +180,7 @@ func generateLoaderContent(language, project string) string {
 	}
 }
 
-func generatePhantomToml(project, language, entry string, guessed bool, nodeDeps, rustDeps map[string]string, secretsRuntime bool) string {
+func generatePhantomToml(project, language, entry string, guessed bool, allDeps map[string]map[string]string, secretsRuntime bool) string {
 	created := time.Now().UTC().Format(time.RFC3339)
 	comment := ""
 	if guessed {
@@ -185,35 +193,41 @@ func generatePhantomToml(project, language, entry string, guessed bool, nodeDeps
 	b.WriteString(fmt.Sprintf("entry = \"%s\"%s\n", entry, comment))
 	b.WriteString(fmt.Sprintf("language = \"%s\"\n", language))
 	b.WriteString(fmt.Sprintf("created_at = \"%s\"\n\n", created))
-	if len(nodeDeps) > 0 {
-		b.WriteString("[dependencies.node]\n")
-		for k, v := range nodeDeps {
-			b.WriteString(fmt.Sprintf("%s = \"%s\"\n", k, v))
+	
+	// Add all detected dependencies
+	for lang, deps := range allDeps {
+		if len(deps) > 0 {
+			b.WriteString(fmt.Sprintf("[dependencies.%s]\n", lang))
+			for k, v := range deps {
+				b.WriteString(fmt.Sprintf("%s = \"%s\"\n", k, v))
+			}
+			b.WriteString("\n")
 		}
-		b.WriteString("\n")
 	}
-	if len(rustDeps) > 0 {
-		b.WriteString("[dependencies.rust]\n")
-		for k, v := range rustDeps {
-			b.WriteString(fmt.Sprintf("%s = \"%s\"\n", k, v))
-		}
-		b.WriteString("\n")
-	}
+	
+	b.WriteString("[runtime]\n")
+	b.WriteString(fmt.Sprintf("language = \"%s\"\n", language))
+	b.WriteString("isolation = \"v8\"\n")
+	b.WriteString("timeout = 30000\n")
+	b.WriteString("memory = 128\n\n")
+	
 	b.WriteString("[secrets]\n")
 	if secretsRuntime {
 		b.WriteString("runtime = true\n")
 	} else {
 		b.WriteString("runtime = false\n")
 	}
+	
 	return b.String()
 }
 
-func scanProject(dir, forcedLang string) (language, entry string, guessed bool, nodeDeps, rustDeps map[string]string, secretsRuntime bool) {
+func scanProject(dir, forcedLang string) (language, entry string, guessed bool, allDeps map[string]map[string]string, secretsRuntime bool) {
 	language = strings.ToLower(strings.TrimSpace(forcedLang))
-	nodeDeps = map[string]string{}
-	rustDeps = map[string]string{}
+	
+	// Enhanced dependency detection for multiple languages
+	allDeps = make(map[string]map[string]string)
 
-	// package.json
+	// package.json (Node.js/TypeScript)
 	pkgPath := filepath.Join(dir, "package.json")
 	if fileExists(pkgPath) {
 		lang, mainEntry, deps := parsePackageJSON(pkgPath)
@@ -223,13 +237,13 @@ func scanProject(dir, forcedLang string) (language, entry string, guessed bool, 
 		if entry == "" && mainEntry != "" {
 			entry = mainEntry
 		}
-		nodeDeps = deps
-		if fileExists(filepath.Join(dir, ".env")) || hasAnyDep(nodeDeps, []string{"tauri", "electron", "next"}) {
+		allDeps["node"] = deps
+		if fileExists(filepath.Join(dir, ".env")) || hasAnyDep(deps, []string{"tauri", "electron", "next"}) {
 			secretsRuntime = true
 		}
 	}
 
-	// Cargo.toml
+	// Cargo.toml (Rust)
 	cargoPath := filepath.Join(dir, "Cargo.toml")
 	if fileExists(cargoPath) {
 		if language == "" {
@@ -239,7 +253,72 @@ func scanProject(dir, forcedLang string) (language, entry string, guessed bool, 
 			entry = "src/main.rs"
 			guessed = true
 		}
-		rustDeps = parseCargoDependencies(cargoPath)
+		allDeps["rust"] = parseCargoDependencies(cargoPath)
+	}
+	
+	// requirements.txt (Python)
+	reqPath := filepath.Join(dir, "requirements.txt")
+	if fileExists(reqPath) {
+		if language == "" {
+			language = "python"
+		}
+		if entry == "" {
+			entry = "main.py"
+			guessed = true
+		}
+		allDeps["python"] = parseRequirementsTxt(reqPath)
+	}
+	
+	// Gemfile (Ruby)
+	gemfilePath := filepath.Join(dir, "Gemfile")
+	if fileExists(gemfilePath) {
+		if language == "" {
+			language = "ruby"
+		}
+		if entry == "" {
+			entry = "main.rb"
+			guessed = true
+		}
+		allDeps["ruby"] = parseGemfile(gemfilePath)
+	}
+	
+	// go.mod (Go)
+	goModPath := filepath.Join(dir, "go.mod")
+	if fileExists(goModPath) {
+		if language == "" {
+			language = "go"
+		}
+		if entry == "" {
+			entry = "main.go"
+			guessed = true
+		}
+		allDeps["go"] = parseGoMod(goModPath)
+	}
+	
+	// composer.json (PHP)
+	composerPath := filepath.Join(dir, "composer.json")
+	if fileExists(composerPath) {
+		if language == "" {
+			language = "php"
+		}
+		if entry == "" {
+			entry = "index.php"
+			guessed = true
+		}
+		allDeps["php"] = parseComposerJSON(composerPath)
+	}
+	
+	// Podfile (Swift/iOS)
+	podfilePath := filepath.Join(dir, "Podfile")
+	if fileExists(podfilePath) {
+		if language == "" {
+			language = "swift"
+		}
+		if entry == "" {
+			entry = "main.swift"
+			guessed = true
+		}
+		allDeps["swift"] = parsePodfile(podfilePath)
 	}
 
 	// Procfile
@@ -537,6 +616,197 @@ venv.bak/
 	}
 
 	return base
+}
+
+// Parse requirements.txt for Python dependencies
+func parseRequirementsTxt(path string) map[string]string {
+	deps := map[string]string{}
+	f, err := os.Open(path)
+	if err != nil {
+		return deps
+	}
+	defer f.Close()
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		line := strings.TrimSpace(s.Text())
+		if line != "" && !strings.HasPrefix(line, "#") {
+			// Handle version specifiers like "package==1.0.0" or "package>=1.0.0"
+			parts := strings.FieldsFunc(line, func(c rune) bool {
+				return c == '=' || c == '>' || c == '<' || c == '~' || c == '!'
+			})
+			if len(parts) >= 1 {
+				packageName := strings.TrimSpace(parts[0])
+				version := "latest"
+				if len(parts) >= 2 {
+					version = strings.TrimSpace(parts[1])
+				}
+				deps[packageName] = version
+			}
+		}
+	}
+	return deps
+}
+
+// Parse Gemfile for Ruby dependencies
+func parseGemfile(path string) map[string]string {
+	deps := map[string]string{}
+	f, err := os.Open(path)
+	if err != nil {
+		return deps
+	}
+	defer f.Close()
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		line := strings.TrimSpace(s.Text())
+		if strings.HasPrefix(line, "gem ") {
+			// Extract gem name and version from "gem 'name', 'version'"
+			re := regexp.MustCompile(`gem\s+['"]([^'"]+)['"](?:,\s*['"]([^'"]+)['"])?`)
+			matches := re.FindStringSubmatch(line)
+			if len(matches) >= 2 {
+				gemName := matches[1]
+				version := "latest"
+				if len(matches) >= 3 && matches[2] != "" {
+					version = matches[2]
+				}
+				deps[gemName] = version
+			}
+		}
+	}
+	return deps
+}
+
+// Parse go.mod for Go dependencies
+func parseGoMod(path string) map[string]string {
+	deps := map[string]string{}
+	f, err := os.Open(path)
+	if err != nil {
+		return deps
+	}
+	defer f.Close()
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		line := strings.TrimSpace(s.Text())
+		if strings.HasPrefix(line, "require ") {
+			// Extract module and version from "require module version"
+			parts := strings.Fields(line)
+			if len(parts) >= 3 {
+				module := parts[1]
+				version := parts[2]
+				deps[module] = version
+			}
+		}
+	}
+	return deps
+}
+
+// Parse composer.json for PHP dependencies
+func parseComposerJSON(path string) map[string]string {
+	deps := map[string]string{}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return deps
+	}
+	var composer struct {
+		Require map[string]string `json:"require"`
+	}
+	_ = json.Unmarshal(data, &composer)
+	if composer.Require != nil {
+		for k, v := range composer.Require {
+			deps[k] = v
+		}
+	}
+	return deps
+}
+
+// Parse Podfile for Swift dependencies
+func parsePodfile(path string) map[string]string {
+	deps := map[string]string{}
+	f, err := os.Open(path)
+	if err != nil {
+		return deps
+	}
+	defer f.Close()
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		line := strings.TrimSpace(s.Text())
+		if strings.HasPrefix(line, "pod ") {
+			// Extract pod name and version from "pod 'Name', 'version'"
+			re := regexp.MustCompile(`pod\s+['"]([^'"]+)['"](?:,\s*['"]([^'"]+)['"])?`)
+			matches := re.FindStringSubmatch(line)
+			if len(matches) >= 2 {
+				podName := matches[1]
+				version := "latest"
+				if len(matches) >= 3 && matches[2] != "" {
+					version = matches[2]
+				}
+				deps[podName] = version
+			}
+		}
+	}
+	return deps
+}
+
+// Generate phantom-lock file for environment setup
+func generatePhantomLock(project, language string, allDeps map[string]map[string]string) string {
+	var b strings.Builder
+	b.WriteString("# Phantom Lock File\n")
+	b.WriteString("# Generated for environment setup and dependency injection\n\n")
+	b.WriteString(fmt.Sprintf("project = \"%s\"\n", project))
+	b.WriteString(fmt.Sprintf("language = \"%s\"\n", language))
+	b.WriteString(fmt.Sprintf("generated_at = \"%s\"\n\n", time.Now().UTC().Format(time.RFC3339)))
+	
+	// Environment setup instructions
+	b.WriteString("[environment]\n")
+	switch language {
+	case "js", "ts":
+		b.WriteString("setup = \"npm install\"\n")
+		b.WriteString("runtime = \"node\"\n")
+	case "python":
+		b.WriteString("setup = \"pip install -r requirements.txt\"\n")
+		b.WriteString("runtime = \"python\"\n")
+	case "rust":
+		b.WriteString("setup = \"cargo build\"\n")
+		b.WriteString("runtime = \"cargo\"\n")
+	case "ruby":
+		b.WriteString("setup = \"bundle install\"\n")
+		b.WriteString("runtime = \"ruby\"\n")
+	case "go":
+		b.WriteString("setup = \"go mod download\"\n")
+		b.WriteString("runtime = \"go\"\n")
+	case "php":
+		b.WriteString("setup = \"composer install\"\n")
+		b.WriteString("runtime = \"php\"\n")
+	case "swift":
+		b.WriteString("setup = \"pod install\"\n")
+		b.WriteString("runtime = \"swift\"\n")
+	default:
+		b.WriteString("setup = \"# install dependencies for your runtime\"\n")
+		b.WriteString("runtime = \"custom\"\n")
+	}
+	b.WriteString("\n")
+	
+	// Dependency snapshot
+	b.WriteString("[dependencies]\n")
+	for lang, deps := range allDeps {
+		if len(deps) > 0 {
+			b.WriteString(fmt.Sprintf("[dependencies.%s]\n", lang))
+			for k, v := range deps {
+				b.WriteString(fmt.Sprintf("%s = \"%s\"\n", k, v))
+			}
+			b.WriteString("\n")
+		}
+	}
+	
+	return b.String()
+}
+
+// Check if directory is empty
+func isEmptyDir(dir string) bool {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return true
+	}
+	return len(entries) == 0
 }
 
 func generatePhantomConfig(projectName, language string) string {

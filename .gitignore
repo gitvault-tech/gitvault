@@ -122,3 +122,4 @@ prime/
 /llms.txt
 
 phantom
+!cmd/phantom/
