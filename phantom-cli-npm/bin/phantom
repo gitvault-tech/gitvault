@@ -1,0 +1,4 @@
+#!/bin/bash
+# Placeholder binary - will be replaced by download-binary.js during installation
+echo "Phantom CLI binary not found. Please run: npm run postinstall"
+exit 1

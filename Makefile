@@ -39,7 +39,7 @@ ACTIONLINT_PACKAGE ?= github.com/rhysd/actionlint/cmd/actionlint@v1
 GOPLS_PACKAGE ?= golang.org/x/tools/gopls@v0.20.0
 GOPLS_MODERNIZE_PACKAGE ?= golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@v0.20.0
 
-DOCKER_IMAGE ?= gitea/gitea
+DOCKER_IMAGE ?= gitvault/gitvault
 DOCKER_TAG ?= latest
 DOCKER_REF := $(DOCKER_IMAGE):$(DOCKER_TAG)
 
@@ -71,7 +71,7 @@ ifeq ($(IS_WINDOWS),yes)
 	EXECUTABLE ?= gitea.exe
 else
 	GOFLAGS := -v
-	EXECUTABLE ?= gitea
+	EXECUTABLE ?= gitvault
 endif
 
 ifeq ($(shell sed --version 2>/dev/null | grep -q GNU && echo gnu),gnu)
@@ -98,7 +98,7 @@ GITHUB_REF_NAME ?= $(shell git rev-parse --abbrev-ref HEAD)
 
 ifneq ($(GITHUB_REF_TYPE),branch)
 	VERSION ?= $(subst v,,$(GITHUB_REF_NAME))
-	GITEA_VERSION ?= $(VERSION)
+	GITVAULT_VERSION ?= $(VERSION)
 else
 	ifneq ($(GITHUB_REF_NAME),)
 		VERSION ?= $(subst release/v,,$(GITHUB_REF_NAME))-nightly
@@ -108,9 +108,9 @@ else
 
 	STORED_VERSION=$(shell cat $(STORED_VERSION_FILE) 2>/dev/null)
 	ifneq ($(STORED_VERSION),)
-		GITEA_VERSION ?= $(STORED_VERSION)
+		GITVAULT_VERSION ?= $(STORED_VERSION)
 	else
-		GITEA_VERSION ?= $(shell git describe --tags --always | sed 's/-/+/' | sed 's/^v//')
+		GITVAULT_VERSION ?= $(shell git describe --tags --always | sed 's/-/+/' | sed 's/^v//')
 	endif
 endif
 
@@ -119,7 +119,7 @@ ifeq ($(VERSION),main)
 	VERSION := main-nightly
 endif
 
-LDFLAGS := $(LDFLAGS) -X "main.MakeVersion=$(MAKE_VERSION)" -X "main.Version=$(GITEA_VERSION)" -X "main.Tags=$(TAGS)"
+LDFLAGS := $(LDFLAGS) -X "main.MakeVersion=$(MAKE_VERSION)" -X "main.Version=$(GITVAULT_VERSION)" -X "main.Tags=$(TAGS)"
 
 LINUX_ARCHS ?= linux/amd64,linux/386,linux/arm-5,linux/arm-6,linux/arm64,linux/riscv64
 
@@ -739,6 +739,24 @@ frontend: $(WEBPACK_DEST) ## build frontend files
 
 .PHONY: backend
 backend: go-check generate-backend $(EXECUTABLE) ## build backend files
+
+.PHONY: phantom-build
+phantom-build: ## build phantom CLI binary
+	CGO_ENABLED="$(CGO_ENABLED)" CGO_CFLAGS="$(CGO_CFLAGS)" $(GO) build $(GOFLAGS) $(EXTRA_GOFLAGS) -tags '$(TAGS)' -ldflags '-s -w $(EXTLDFLAGS) $(LDFLAGS)' -o phantom ./cmd/phantom-cli
+
+.PHONY: phantom-release
+phantom-release: phantom-build ## build phantom binaries for all platforms
+	@echo "Building phantom CLI for all platforms..."
+	@mkdir -p $(DIST)/phantom-binaries
+	CGO_CFLAGS="$(CGO_CFLAGS)" $(GO) run $(XGO_PACKAGE) -go $(XGO_VERSION) -dest $(DIST)/phantom-binaries -tags '$(TAGS)' -ldflags '-s -w $(LDFLAGS)' -targets 'darwin-10.12/amd64,darwin-10.12/arm64,linux/amd64,linux/arm64,windows/amd64' -out phantom ./cmd/phantom-cli
+	@echo "Renaming binaries for npm package..."
+	@cd $(DIST)/phantom-binaries && \
+	mv phantom-darwin-10.12-amd64 phantom-darwin-amd64 && \
+	mv phantom-darwin-10.12-arm64 phantom-darwin-arm64 && \
+	mv phantom-linux-amd64 phantom-linux-amd64 && \
+	mv phantom-linux-arm64 phantom-linux-arm64 && \
+	mv phantom-windows-amd64.exe phantom-windows-amd64.exe
+	@echo "Phantom binaries built successfully!"
 
 # We generate the backend before the frontend in case we in future we want to generate things in the frontend from generated files in backend
 .PHONY: generate

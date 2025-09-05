@@ -1,0 +1,57 @@
+{
+  "name": "@gitvault/phantom",
+  "version": "1.0.1",
+  "description": "PhantomKit CLI for secure code storage and runtime injection",
+  "main": "index.js",
+  "bin": {
+    "phantom": "./bin/phantom"
+  },
+  "scripts": {
+    "postinstall": "node scripts/download-binary.js",
+    "preinstall": "node scripts/check-platform.js",
+    "test": "node scripts/test-binary.js",
+    "prepublishOnly": "npm run test",
+    "publish:all": "node scripts/publish-all.js",
+    "publish:gitvault": "npm run test && npm publish --access public",
+    "version:patch": "npm version patch && npm run publish:all",
+    "version:minor": "npm version minor && npm run publish:all",
+    "version:major": "npm version major && npm run publish:all"
+  },
+  "keywords": [
+    "phantomkit",
+    "gitvault",
+    "phantom",
+    "phantom-cli",
+    "cli",
+    "code-storage",
+    "runtime-injection",
+    "secure-code",
+    "code-execution",
+    "vault",
+    "encryption"
+  ],
+  "author": "GitVault Technologies",
+  "license": "PROPRIETARY",
+  "homepage": "https://gitvault.tech",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gitvault-tech/gitvault.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gitvault-tech/gitvault/issues"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "preferGlobal": true,
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "bin/",
+    "scripts/",
+    "index.js",
+    "package.json",
+    "README.md"
+  ]
+}
