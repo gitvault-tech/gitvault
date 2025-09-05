@@ -97,6 +97,7 @@ import (
 	"code.gitea.io/gitea/services/auth"
 	"code.gitea.io/gitea/services/context"
 	"code.gitea.io/gitea/services/forms"
+	phantomapi "code.gitea.io/gitea/services/phantomkit"
 
 	_ "code.gitea.io/gitea/routers/api/v1/swagger" // for swagger generation
 
@@ -947,6 +948,15 @@ func Routes() *web.Router {
 	}
 
 	m.Group("", func() {
+		// PhantomKit stubs for UI testing
+		m.Group("/phantomkit", func() {
+			m.Post("/validate", phantomapi.ValidateKey)
+			m.Get("/projects", phantomapi.Projects)
+			m.Get("/activity", phantomapi.Activity)
+			m.Post("/upload", phantomapi.Upload)
+			m.Post("/import", phantomapi.Import)
+		})
+
 		// Miscellaneous (no scope required)
 		if setting.API.EnableSwagger {
 			m.Get("/swagger", func(ctx *context.APIContext) {

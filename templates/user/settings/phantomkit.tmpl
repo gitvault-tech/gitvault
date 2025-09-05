@@ -1,0 +1,219 @@
+{{template "user/settings/layout_head" (dict "ctxData" . "pageClass" "user settings phantomkit")}}
+	<div class="user-setting-content">
+		<h4 class="ui top attached header">
+			{{svg "octicon-shield" 20 "tw-mr-2"}}
+			PhantomKit API Keys
+		</h4>
+		<div class="ui attached segment">
+			<div class="flex-list">
+				<div class="flex-item">
+					<div class="flex-item-main">
+						<h5 class="tw-mb-2">Secure Code Storage & Runtime</h5>
+						<p class="tw-mb-4 text-muted">
+							Generate API keys to securely store and execute code with PhantomKit. 
+							Use these keys with the Phantom CLI to upload, manage, and inject code at runtime.
+						</p>
+					</div>
+				</div>
+
+				<!-- Create New API Key Form -->
+				<div class="flex-item">
+					<div class="ui form">
+						<form action="{{.Link}}/create" method="post">
+							{{.CsrfTokenHtml}}
+							<div class="inline field">
+								<label for="key_name">API Key Name</label>
+								<input id="key_name" name="name" type="text" placeholder="e.g., My Project API Key" required>
+								<span class="help">Give your API key a descriptive name to identify its purpose</span>
+							</div>
+							<div class="inline field">
+								<label for="key_description">Description (Optional)</label>
+								<textarea id="key_description" name="description" rows="2" placeholder="Describe what this API key will be used for..."></textarea>
+							</div>
+							<div class="inline field">
+								<button class="ui primary button" type="submit">
+									{{svg "octicon-plus" 16 "tw-mr-1"}}
+									Generate API Key
+								</button>
+							</div>
+						</form>
+					</div>
+				</div>
+
+				<!-- Existing API Keys -->
+				{{range .PhantomKitKeys}}
+					<div class="flex-item">
+						<div class="flex-item-leading">
+							<span class="text {{if .HasRecentActivity}}green{{end}}" {{if .HasRecentActivity}}data-tooltip-content="Recently used"{{end}}>
+								{{svg "octicon-key" 32}}
+							</span>
+						</div>
+						<div class="flex-item-main">
+							<div class="flex-item-title">{{.Name}}</div>
+							<div class="flex-item-body">
+								<p class="tw-my-1">{{.Description}}</p>
+								<div class="tw-flex tw-items-center tw-gap-2 tw-mb-2">
+									<code class="api-key-display" data-key="{{.Key}}">
+										{{if .ShowKey}}
+											{{.Key}}
+										{{else}}
+											••••••••••••••••••••••••••••••••
+										{{end}}
+									</code>
+									<button class="ui tiny button toggle-key-visibility" data-key-id="{{.ID}}">
+										{{if .ShowKey}}
+											{{svg "octicon-eye-closed" 14}}
+										{{else}}
+											{{svg "octicon-eye" 14}}
+										{{end}}
+									</button>
+									<button class="ui tiny button copy-key" data-key="{{.Key}}">
+										{{svg "octicon-copy" 14}}
+									</button>
+								</div>
+								<i class="text-muted">
+									Created {{DateUtils.AbsoluteShort .CreatedUnix}} — 
+									{{if .HasUsed}}
+										Last used {{DateUtils.AbsoluteShort .UpdatedUnix}}
+									{{else}}
+										Never used
+									{{end}}
+								</i>
+							</div>
+						</div>
+						<div class="flex-item-trailing">
+							<button class="ui red tiny button delete-button" data-modal-id="delete-phantomkit-key" data-url="{{$.Link}}/delete" data-id="{{.ID}}">
+								{{svg "octicon-trash" 16 "tw-mr-1"}}
+								Delete
+							</button>
+						</div>
+					</div>
+				{{end}}
+
+				{{if not .PhantomKitKeys}}
+					<div class="flex-item">
+						<div class="ui message info">
+							<div class="header">No API Keys Yet</div>
+							<p>Create your first PhantomKit API key to start storing and executing code securely.</p>
+						</div>
+					</div>
+				{{end}}
+			</div>
+		</div>
+
+		<!-- Usage Statistics -->
+		<h4 class="ui top attached header">
+			{{svg "octicon-graph" 20 "tw-mr-2"}}
+			Usage Statistics
+		</h4>
+		<div class="ui attached segment">
+			<div class="ui three column grid">
+				<div class="column">
+					<div class="ui statistic">
+						<div class="value">{{.Stats.TotalKeys}}</div>
+						<div class="label">API Keys</div>
+					</div>
+				</div>
+				<div class="column">
+					<div class="ui statistic">
+						<div class="value">{{.Stats.TotalUploads}}</div>
+						<div class="label">Code Uploads</div>
+					</div>
+				</div>
+				<div class="column">
+					<div class="ui statistic">
+						<div class="value">{{.Stats.TotalExecutions}}</div>
+						<div class="label">Runtime Executions</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Quick Start Guide -->
+		<h4 class="ui top attached header">
+			{{svg "octicon-rocket" 20 "tw-mr-2"}}
+			Quick Start
+		</h4>
+		<div class="ui attached segment">
+			<div class="ui message">
+				<div class="header">Get Started with PhantomKit</div>
+				<ol class="tw-mt-2">
+					<li>Generate an API key above</li>
+					<li>Install the Phantom CLI: <code>npm install -g @gitvault/phantom</code></li>
+					<li>Initialize a project: <code>phantom init my-project</code></li>
+					<li>Upload your code: <code>phantom upload --key YOUR_API_KEY</code></li>
+					<li>Load code at runtime: <code>phantom load my-project --key YOUR_API_KEY</code></li>
+				</ol>
+			</div>
+		</div>
+	</div>
+
+	<!-- Delete Confirmation Modal -->
+	<div class="ui modal" id="delete-phantomkit-key">
+		<div class="header">Delete API Key</div>
+		<div class="content">
+			<p>Are you sure you want to delete this API key? This action cannot be undone.</p>
+			<p class="text-danger">Any applications using this key will stop working immediately.</p>
+		</div>
+		<div class="actions">
+			<div class="ui cancel button">Cancel</div>
+			<div class="ui red approve button">Delete</div>
+		</div>
+	</div>
+
+	<script>
+		// Toggle key visibility
+		document.querySelectorAll('.toggle-key-visibility').forEach(button => {
+			button.addEventListener('click', function() {
+				const keyId = this.dataset.keyId;
+				const keyDisplay = document.querySelector(`[data-key-id="${keyId}"]`).closest('.flex-item').querySelector('.api-key-display');
+				const icon = this.querySelector('svg');
+				
+				if (keyDisplay.textContent.includes('•••')) {
+					keyDisplay.textContent = keyDisplay.dataset.key;
+					icon.innerHTML = '<path d="M1.5 4.5a3 3 0 0 1 3-3h1.372c.86 0 1.61.586 1.819 1.42l1.105 4.423a1.875 1.875 0 0 1-.694 1.955l-1.293.97c-.135.101-.164.249-.126.352a11.285 11.285 0 0 0 6.697 6.697c.103.038.25.009.352-.126l.97-1.293a1.875 1.875 0 0 1 1.955-.694l4.423 1.105c.834.209 1.42.959 1.42 1.82V19.5a3 3 0 0 1-3 3h-2.25C8.552 22.5 1.5 15.448 1.5 6.75V4.5Z"/>';
+				} else {
+					keyDisplay.textContent = '••••••••••••••••••••••••••••••••';
+					icon.innerHTML = '<path d="M3.53 2.47a.75.75 0 0 0-1.06 1.06l18 18a.75.75 0 1 0 1.06-1.06l-18-18ZM22.5 12a11.25 11.25 0 0 1-2.25 6.75l-1.5-1.5a9 9 0 0 0 1.5-5.25 9 9 0 0 0-1.5-5.25l1.5-1.5A11.25 11.25 0 0 1 22.5 12Z"/><path d="M15.75 12a3.75 3.75 0 0 1-3.75 3.75l-1.5-1.5a2.25 2.25 0 0 0 2.25-2.25l1.5 1.5Z"/><path d="M1.5 4.5a3 3 0 0 1 3-3h1.372c.86 0 1.61.586 1.819 1.42l1.105 4.423a1.875 1.875 0 0 1-.694 1.955l-1.293.97c-.135.101-.164.249-.126.352a11.285 11.285 0 0 0 6.697 6.697c.103.038.25.009.352-.126l.97-1.293a1.875 1.875 0 0 1 1.955-.694l4.423 1.105c.834.209 1.42.959 1.42 1.82V19.5a3 3 0 0 1-3 3h-2.25C8.552 22.5 1.5 15.448 1.5 6.75V4.5Z"/>';
+				}
+			});
+		});
+
+		// Copy key to clipboard
+		document.querySelectorAll('.copy-key').forEach(button => {
+			button.addEventListener('click', function() {
+				const key = this.dataset.key;
+				navigator.clipboard.writeText(key).then(() => {
+					// Show success feedback
+					const originalText = this.innerHTML;
+					this.innerHTML = '{{svg "octicon-check" 14}}';
+					this.classList.add('green');
+					setTimeout(() => {
+						this.innerHTML = originalText;
+						this.classList.remove('green');
+					}, 2000);
+				});
+			});
+		});
+
+		// Delete confirmation
+		document.querySelectorAll('.delete-button').forEach(button => {
+			button.addEventListener('click', function() {
+				const modal = document.getElementById('delete-phantomkit-key');
+				modal.querySelector('.approve.button').onclick = () => {
+					const url = this.dataset.url;
+					const id = this.dataset.id;
+					fetch(`${url}/${id}`, {
+						method: 'DELETE',
+						headers: {
+							'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+						}
+					}).then(() => {
+						location.reload();
+					});
+				};
+				$(modal).modal('show');
+			});
+		});
+	</script>
+{{template "user/settings/layout_footer" .}}

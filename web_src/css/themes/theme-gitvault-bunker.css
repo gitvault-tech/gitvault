@@ -1,0 +1,46 @@
+@import "./theme-gitea-dark.css";
+
+gitea-theme-meta-info {
+  --theme-display-name: "GitVault Bunker";
+}
+
+/* GitVault bunker/purple theme overrides (builds on top of dark) */
+:root {
+  /* keep dark mode */
+  --is-dark-theme: true;
+
+  /* primary brand color: bunker purple */
+  --color-primary: #7c3aed; /* violet-600 */
+  --color-primary-contrast: #ffffff;
+  --color-primary-dark-1: #6d28d9; /* violet-700 */
+  --color-primary-dark-2: #5b21b6; /* violet-800 */
+  --color-primary-dark-3: #4c1d95; /* violet-900 */
+  --color-primary-light-1: #8b5cf6; /* violet-500 */
+  --color-primary-light-2: #a78bfa; /* violet-400 */
+  --color-primary-light-3: #c4b5fd; /* violet-300 */
+  --color-primary-hover: var(--color-primary-light-1);
+  --color-primary-active: var(--color-primary-dark-1);
+
+  /* bunker surfaces */
+  --color-body: #0b0b14; /* bunker */
+  --color-nav-bg: #0f0f17;
+  --color-secondary-bg: #171923;
+  --color-box-header: #0f1218;
+  --color-box-body: #0c0f15;
+  --color-card: #10131a;
+  --color-hover: #1a1f2b7a;
+  --color-active: #1a1f2b99;
+  --color-shadow: #00000066;
+
+  /* text */
+  --color-text-dark: #f3f4f6;
+  --color-text: #d1d5db;
+  --color-text-light: #a3aab2;
+  --color-input-text: var(--color-text-dark);
+
+  /* accents */
+  --color-accent: var(--color-primary);
+  --color-small-accent: var(--color-primary-light-2);
+}
+
+

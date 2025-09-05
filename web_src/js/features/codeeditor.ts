@@ -94,7 +94,7 @@ function updateTheme(monaco: Monaco): void {
   const styles = window.getComputedStyle(document.documentElement);
   const getColor = (name: string) => tinycolor(styles.getPropertyValue(name).trim()).toString('hex6');
 
-  monaco.editor.defineTheme('gitea', {
+  monaco.editor.defineTheme('gitvault', {
     base: isDarkTheme() ? 'vs-dark' : 'vs',
     inherit: true,
     rules: [
@@ -147,7 +147,7 @@ export async function createMonaco(textarea: HTMLTextAreaElement, filename: stri
 
   const editor = monaco.editor.create(container, {
     model,
-    theme: 'gitea',
+    theme: 'gitvault',
     ...other,
   });
 

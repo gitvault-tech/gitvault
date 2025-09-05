@@ -1,0 +1,56 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:16
+    container_name: gitvault-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gitvault
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  minio:
+    image: minio/minio
+    container_name: gitvault-minio
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: admin123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+
+  gitvault:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: gitvault-app
+    depends_on:
+      - postgres
+      - minio
+    environment:
+      GITEA__database__DB_TYPE: postgres
+      GITEA__database__HOST: postgres:5432
+      GITEA__database__USER: postgres
+      GITEA__database__PASSWD: postgres
+      GITEA__database__NAME: gitvault
+      GITEA__storage__STORAGE_TYPE: minio
+      GITEA__storage__MINIO_ENDPOINT: minio:9000
+      GITEA__storage__MINIO_ACCESS_KEY_ID: admin
+      GITEA__storage__MINIO_SECRET_ACCESS_KEY: admin123
+      GITEA__storage__MINIO_BUCKET: gitvault
+      GITEA__storage__MINIO_USE_SSL: "false"
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+  miniodata:
+
+
+

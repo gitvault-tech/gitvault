@@ -103,12 +103,12 @@ const storageSectionName = "storage"
 
 func getDefaultStorageSection(rootCfg ConfigProvider) ConfigSection {
 	storageSec := rootCfg.Section(storageSectionName)
-	// Global Defaults
+	// Global Defaults - Use local storage for cloud-first experience
 	storageSec.Key("STORAGE_TYPE").MustString("local")
 	storageSec.Key("MINIO_ENDPOINT").MustString("localhost:9000")
 	storageSec.Key("MINIO_ACCESS_KEY_ID").MustString("")
 	storageSec.Key("MINIO_SECRET_ACCESS_KEY").MustString("")
-	storageSec.Key("MINIO_BUCKET").MustString("gitea")
+	storageSec.Key("MINIO_BUCKET").MustString("gitvault")
 	storageSec.Key("MINIO_LOCATION").MustString("us-east-1")
 	storageSec.Key("MINIO_USE_SSL").MustBool(false)
 	storageSec.Key("MINIO_INSECURE_SKIP_VERIFY").MustBool(false)
@@ -117,7 +117,7 @@ func getDefaultStorageSection(rootCfg ConfigProvider) ConfigSection {
 	storageSec.Key("AZURE_BLOB_ENDPOINT").MustString("")
 	storageSec.Key("AZURE_BLOB_ACCOUNT_NAME").MustString("")
 	storageSec.Key("AZURE_BLOB_ACCOUNT_KEY").MustString("")
-	storageSec.Key("AZURE_BLOB_CONTAINER").MustString("gitea")
+	storageSec.Key("AZURE_BLOB_CONTAINER").MustString("gitvault")
 	return storageSec
 }
 

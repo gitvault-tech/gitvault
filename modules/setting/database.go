@@ -59,7 +59,12 @@ func LoadDBSetting() {
 
 func loadDBSetting(rootCfg ConfigProvider) {
 	sec := rootCfg.Section("database")
-	Database.Type = DatabaseType(sec.Key("DB_TYPE").String())
+	// Use SQLite by default for cloud-first experience (no setup required)
+	dbTypeVal := sec.Key("DB_TYPE").String()
+	if dbTypeVal == "" {
+		dbTypeVal = "sqlite3"
+	}
+	Database.Type = DatabaseType(dbTypeVal)
 
 	Database.Host = sec.Key("HOST").String()
 	Database.Name = sec.Key("NAME").String()
@@ -71,7 +76,8 @@ func loadDBSetting(rootCfg ConfigProvider) {
 	Database.SSLMode = sec.Key("SSL_MODE").MustString("disable")
 	Database.CharsetCollation = sec.Key("CHARSET_COLLATION").String()
 
-	Database.Path = sec.Key("PATH").MustString(filepath.Join(AppDataPath, "gitea.db"))
+	// Use gitvault.db as the default SQLite file name
+	Database.Path = sec.Key("PATH").MustString(filepath.Join(AppDataPath, "gitvault.db"))
 	Database.Timeout = sec.Key("SQLITE_TIMEOUT").MustInt(500)
 	Database.SQLiteJournalMode = sec.Key("SQLITE_JOURNAL_MODE").MustString("")
 

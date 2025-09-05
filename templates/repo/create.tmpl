@@ -44,6 +44,16 @@
 					<span class="help tw-hidden" data-help-for-repo-name=".profile-private">{{ctx.Locale.Tr "repo.repo_name_profile_private_hint"}}</span>
 				</div>
 
+				<!-- PhantomKit Integration -->
+				<div class="inline field">
+					<label>PhantomKit Integration</label>
+					<div class="ui checkbox">
+						<input type="checkbox" name="enable_phantomkit" id="enable_phantomkit">
+						<label for="enable_phantomkit">Enable PhantomKit for this repository</label>
+					</div>
+					<span class="help">Generate loader files and enable secure code execution for this repository</span>
+				</div>
+
 				<div class="inline field">
 					<label>{{ctx.Locale.Tr "repo.visibility"}}</label>
 					<div class="ui checkbox">

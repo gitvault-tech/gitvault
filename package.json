@@ -1,4 +1,6 @@
 {
+  "name": "gitvault",
+  "description": "GitVault - Secure Private Repository Storage with PhantomKit Integration",
   "type": "module",
   "engines": {
     "node": ">= 20.0.0"
@@ -41,6 +43,7 @@
     "online-3d-viewer": "0.16.0",
     "pdfobject": "2.3.1",
     "perfect-debounce": "1.0.0",
+    "phantomkit": "^1.0.0",
     "postcss": "8.5.6",
     "postcss-loader": "8.1.1",
     "postcss-nesting": "13.0.2",
@@ -60,7 +63,6 @@
     "vue-chartjs": "5.3.2",
     "vue-loader": "17.4.2",
     "webpack": "5.101.0",
-    "webpack-cli": "6.0.1",
     "wrap-ansi": "9.0.0"
   },
   "devDependencies": {
@@ -113,7 +115,8 @@
     "updates": "16.5.2",
     "vite-string-plugin": "1.4.6",
     "vitest": "3.2.4",
-    "vue-tsc": "3.0.4"
+    "vue-tsc": "3.0.4",
+    "webpack-cli": "6.0.1"
   },
   "browserslist": [
     "defaults"

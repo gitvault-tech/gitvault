@@ -22,6 +22,8 @@ function extractRootVars(css) {
 const vars = extractRootVars([
   readFileSync(new URL('web_src/css/themes/theme-gitea-light.css', import.meta.url), 'utf8'),
   readFileSync(new URL('web_src/css/themes/theme-gitea-dark.css', import.meta.url), 'utf8'),
+  // include GitVault bunker theme so Tailwind sees its CSS variables
+  readFileSync(new URL('web_src/css/themes/theme-gitvault-bunker.css', import.meta.url), 'utf8'),
 ].join('\n'));
 
 export default {

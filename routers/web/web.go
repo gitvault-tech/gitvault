@@ -516,6 +516,10 @@ func registerWebRoutes(m *web.Router) {
 		m.Get("/search", repo.SearchIssues)
 	}, reqSignIn)
 
+	
+	// Root route - Traditional GitVault dashboard (like self-hosted Gitea after setup)
+	m.Get("/", user.Dashboard)
+
 	m.Get("/pulls", reqSignIn, user.Pulls)
 	m.Get("/milestones", reqSignIn, reqMilestonesDashboardPageEnabled, user.Milestones)
 
@@ -636,6 +640,14 @@ func registerWebRoutes(m *web.Router) {
 			m.Combo("").Get(user_setting.Applications).
 				Post(web.Bind(forms.NewAccessTokenForm{}), user_setting.ApplicationsPost)
 			m.Post("/delete", user_setting.DeleteApplication)
+		})
+
+		// PhantomKit API keys
+		m.Group("/phantomkit", func() {
+			m.Combo("").Get(user_setting.PhantomKit).
+				Post(web.Bind(forms.PhantomKitKeyForm{}), user_setting.PhantomKitCreatePost)
+			m.Post("/delete", user_setting.PhantomKitDeletePost)
+			m.Post("/toggle", user_setting.PhantomKitToggleVisibility)
 		})
 
 		m.Combo("/keys").Get(user_setting.Keys).

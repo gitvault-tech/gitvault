@@ -28,6 +28,9 @@
 		<a class="{{if .PageIsSettingsApplications}}active {{end}}item" href="{{AppSubUrl}}/user/settings/applications">
 			{{ctx.Locale.Tr "settings.applications"}}
 		</a>
+		<a class="{{if .PageIsSettingsPhantomKit}}active {{end}}item" href="{{AppSubUrl}}/user/settings/phantomkit">
+			PhantomKit API
+		</a>
 		{{if not ($.UserDisabledFeatures.Contains "manage_ssh_keys" "manage_gpg_keys")}}
 		<a class="{{if .PageIsSettingsKeys}}active {{end}}item" href="{{AppSubUrl}}/user/settings/keys">
 			{{ctx.Locale.Tr "settings.ssh_gpg_keys"}}

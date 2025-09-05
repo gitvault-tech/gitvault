@@ -386,6 +386,9 @@ func prepareMigrationTasks() []*migration {
 
 		// Gitea 1.24.0 ends at database version 321
 		newMigration(321, "Use LONGTEXT for some columns and fix review_state.updated_files column", v1_25.UseLongTextInSomeColumnsAndFixBugs),
+		
+		// GitVault 1.25.0+ - PhantomKit integration
+		newMigration(322, "Create phantomkit_keys table for API key management", v1_25.CreatePhantomKitKeysTable),
 	}
 	return preparedMigrations
 }
