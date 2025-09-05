@@ -1,6 +1,6 @@
 {
   "name": "@gitvault/phantom",
-  "version": "1.0.1",
+  "version": "0.1.0",
   "description": "PhantomKit CLI for secure code storage and runtime injection",
   "main": "index.js",
   "bin": {
